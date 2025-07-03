@@ -4,6 +4,7 @@ import { api } from '../lib/api';
 // Simple Product interface for this hook
 interface Product {
   _id: string;
+  id: string; // Add computed id field for compatibility
   name: string;
   description?: string;
   price: number;
@@ -29,8 +30,13 @@ export function useProducts() {
       const response = await api.getProducts();
       
       if (response.success && response.data) {
-        setProducts(response.data);
-        console.log('✅ Products fetched successfully:', response.data.length);
+        // Transform products to include id field for compatibility
+        const transformedProducts = response.data.map(product => ({
+          ...product,
+          id: product._id, // Add id field for compatibility with existing components
+        }));
+        setProducts(transformedProducts);
+        console.log('✅ Products fetched successfully:', transformedProducts.length);
       } else {
         throw new Error('Failed to fetch products');
       }
@@ -74,8 +80,12 @@ export function useProduct(id: string) {
         const response = await api.getProduct(id);
         
         if (response.success && response.data) {
-          setProduct(response.data);
-          console.log('✅ Product fetched successfully:', response.data.name);
+          const transformedProduct = {
+            ...response.data,
+            id: response.data._id, // Add id field for compatibility
+          };
+          setProduct(transformedProduct);
+          console.log('✅ Product fetched successfully:', transformedProduct.name);
         } else {
           throw new Error('Product not found');
         }

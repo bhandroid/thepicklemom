@@ -147,6 +147,48 @@ class ApiClient {
   async getCategories(): Promise<ApiResponse<any[]>> {
     return this.request<ApiResponse<any[]>>('/categories');
   }
+
+  // Promo codes endpoints
+  async getPromoCodes(): Promise<ApiResponse<any[]>> {
+    return this.request<ApiResponse<any[]>>('/promos');
+  }
+
+  async getPromoCode(id: string): Promise<ApiResponse<any>> {
+    return this.request<ApiResponse<any>>(`/promos/${id}`);
+  }
+
+  async validatePromoCode(code: string, orderAmount: number): Promise<ApiResponse<any>> {
+    return this.request<ApiResponse<any>>('/promos/validate', {
+      method: 'POST',
+      body: JSON.stringify({ code, orderAmount }),
+    });
+  }
+
+  async createPromoCode(promoData: any): Promise<ApiResponse<any>> {
+    return this.request<ApiResponse<any>>('/promos', {
+      method: 'POST',
+      body: JSON.stringify(promoData),
+    });
+  }
+
+  async updatePromoCode(id: string, promoData: any): Promise<ApiResponse<any>> {
+    return this.request<ApiResponse<any>>(`/promos/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(promoData),
+    });
+  }
+
+  async deletePromoCode(id: string): Promise<ApiResponse<any>> {
+    return this.request<ApiResponse<any>>(`/promos/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async togglePromoCodeStatus(id: string): Promise<ApiResponse<any>> {
+    return this.request<ApiResponse<any>>(`/promos/${id}/toggle`, {
+      method: 'PATCH',
+    });
+  }
 }
 
 export const api = new ApiClient(API_BASE_URL);

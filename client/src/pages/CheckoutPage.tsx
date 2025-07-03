@@ -2,16 +2,21 @@ import { useState } from 'react';
 import { Helmet } from 'react-helmet';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { CreditCard, Truck, Shield, ArrowRight } from 'lucide-react';
+import { CreditCard, Truck, Shield, ArrowRight, Tag, X } from 'lucide-react';
 import Button from '../components/ui/Button';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../hooks/useAuth';
+import { validatePromoCode } from '../lib/promos';
 
 const CheckoutPage = () => {
   const { cart, cartTotal, clearCart } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [promoCode, setPromoCode] = useState('');
+  const [promoDiscount, setPromoDiscount] = useState<any>(null);
+  const [promoError, setPromoError] = useState('');
+  const [promoLoading, setPromoLoading] = useState(false);
   const [formData, setFormData] = useState({
     fullName: '',
     email: user?.email || '',
@@ -32,6 +37,29 @@ const CheckoutPage = () => {
       [name]: value
     }));
   };
+
+  const handleApplyPromo = async () => {
+    if (!promoCode.trim()) return;
+    
+    setPromoLoading(true);
+    setPromoError('');
+    
+    try {
+      const result = await validatePromoCode(promoCode.trim(), cartTotal);
+      setPromoDiscount(result);
+    } catch (error: any) {
+      setPromoError(error.message || 'Invalid promo code');
+      setPromoDiscount(null);
+    } finally {
+      setPromoLoading(false);
+    }
+  };
+
+  const handleRemovePromo = () => {
+    setPromoCode('');
+    setPromoDiscount(null);
+    setPromoError('');
+  };
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,6 +71,14 @@ const CheckoutPage = () => {
       navigate('/thank-you');
     }, 2000);
   };
+
+  const shippingCost = 50;
+  const taxRate = 0.05;
+  const subtotal = cartTotal;
+  const discountAmount = promoDiscount?.discountAmount || 0;
+  const discountedSubtotal = subtotal - discountAmount;
+  const tax = discountedSubtotal * taxRate;
+  const finalTotal = discountedSubtotal + shippingCost + tax;
   
   if (cart.length === 0) {
     navigate('/cart');
@@ -93,23 +129,85 @@ const CheckoutPage = () => {
                 ))}
               </div>
               
+              {/* Promo Code Section */}
+              <div className="border-t border-neutral-200 mt-4 pt-4">
+                <div className="flex items-center gap-2 mb-4">
+                  <Tag size={18} className="text-primary-500" />
+                  <span className="font-medium text-secondary-500">Promo Code</span>
+                </div>
+                
+                {!promoDiscount ? (
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={promoCode}
+                      onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                      placeholder="Enter promo code"
+                      className="flex-1 px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-300"
+                    />
+                    <Button
+                      onClick={handleApplyPromo}
+                      variant="outline"
+                      disabled={!promoCode.trim() || promoLoading}
+                    >
+                      {promoLoading ? 'Applying...' : 'Apply'}
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between p-3 bg-success-50 border border-success-200 rounded-md">
+                    <div>
+                      <span className="font-medium text-success-700">{promoDiscount.code}</span>
+                      {promoDiscount.description && (
+                        <p className="text-sm text-success-600">{promoDiscount.description}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-success-700 font-medium">
+                        -₹{promoDiscount.discountAmount.toFixed(2)}
+                      </span>
+                      <button
+                        onClick={handleRemovePromo}
+                        className="text-success-600 hover:text-success-800"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+                
+                {promoError && (
+                  <p className="text-error-500 text-sm mt-2">{promoError}</p>
+                )}
+              </div>
+              
               <div className="border-t border-neutral-200 mt-4 pt-4">
                 <div className="flex justify-between mb-2">
                   <span className="text-neutral-600">Subtotal</span>
-                  <span className="font-medium">₹{cartTotal.toFixed(2)}</span>
+                  <span className="font-medium">₹{subtotal.toFixed(2)}</span>
                 </div>
+                {promoDiscount && (
+                  <div className="flex justify-between mb-2">
+                    <span className="text-success-600">Discount ({promoDiscount.code})</span>
+                    <span className="font-medium text-success-600">-₹{discountAmount.toFixed(2)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between mb-2">
                   <span className="text-neutral-600">Shipping</span>
-                  <span className="font-medium">₹50.00</span>
+                  <span className="font-medium">₹{shippingCost.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between mb-4">
                   <span className="text-neutral-600">Tax (5%)</span>
-                  <span className="font-medium">₹{(cartTotal * 0.05).toFixed(2)}</span>
+                  <span className="font-medium">₹{tax.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-lg font-bold text-secondary-500">
                   <span>Total</span>
-                  <span>₹{(cartTotal + 50 + cartTotal * 0.05).toFixed(2)}</span>
+                  <span>₹{finalTotal.toFixed(2)}</span>
                 </div>
+                {promoDiscount && (
+                  <div className="text-sm text-success-600 mt-2">
+                    You saved ₹{discountAmount.toFixed(2)} with promo code {promoDiscount.code}!
+                  </div>
+                )}
               </div>
             </motion.div>
             
